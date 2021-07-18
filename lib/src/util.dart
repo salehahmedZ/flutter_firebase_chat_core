@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 /// Fetches user from Firebase and returns a promise
 Future<types.User> fetchUser(String userId, {types.Role? role}) async {
-  final doc =
-      await FirebaseFirestore.instance.collection('users').doc(userId).get();
+  final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
   return processUserDocument(doc, role: role);
 }
@@ -13,11 +11,11 @@ Future<types.User> fetchUser(String userId, {types.Role? role}) async {
 /// Returns a list of [types.Room] created from Firebase query.
 /// If room has 2 participants, sets correct room name and image.
 Future<List<types.Room>> processRoomsQuery(
-  User firebaseUser,
+  String authId,
   QuerySnapshot<Map<String, dynamic>> query,
 ) async {
   final futures = query.docs.map(
-    (doc) => processRoomDocument(doc, firebaseUser),
+    (doc) => processRoomDocument(doc, authId),
   );
 
   return await Future.wait(futures);
@@ -26,7 +24,7 @@ Future<List<types.Room>> processRoomsQuery(
 /// Returns a [types.Room] created from Firebase document
 Future<types.Room> processRoomDocument(
   DocumentSnapshot<Map<String, dynamic>> doc,
-  User firebaseUser,
+  String authId,
 ) async {
   final createdAt = doc.data()?['createdAt'] as Timestamp?;
   var imageUrl = doc.data()?['imageUrl'] as String?;
@@ -49,11 +47,11 @@ Future<types.Room> processRoomDocument(
   if (type == types.RoomType.direct.toShortString()) {
     try {
       final otherUser = users.firstWhere(
-        (u) => u.id != firebaseUser.uid,
+        (u) => u.id != authId,
       );
 
       imageUrl = otherUser.imageUrl;
-      name = '${otherUser.firstName ?? ''} ${otherUser.lastName ?? ''}'.trim();
+      name = (otherUser.firstName ?? '').trim();
     } catch (e) {
       // Do nothing if other user is not found, because he should be found.
       // Consider falling back to some default values.
